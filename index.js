@@ -144,6 +144,8 @@ async function emsCalendarToGoogleCalendar(auth) {
 			};
 		});
 
+	console.log(courseList);
+
 	// Handle create event from data formatted
 	for (let i = 0; i < courseList.length; i++) {
 		const course = courseList[i];
