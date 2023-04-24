@@ -13,11 +13,11 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 const TOKEN_PATH = path.join(process.cwd(), "token.json");
 const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
 
-/**
- * Reads previously authorized credentials from the save file.
- *
- * @return {Promise<OAuth2Client|null>}
- */
+const STUDENT_ID = 22004015;
+const SEMESTER_ID = 35;
+const CALENDAR_ID =
+	"772c9d334b8b255d1d09c72f8b421e88eba516ed655d530da6d0f4a311532cb9@group.calendar.google.com";
+
 async function loadSavedCredentialsIfExist() {
 	try {
 		const content = await fs.readFile(TOKEN_PATH);
@@ -60,9 +60,11 @@ async function authorize() {
 		scopes: SCOPES,
 		keyfilePath: CREDENTIALS_PATH,
 	});
+
 	if (client.credentials) {
 		await saveCredentials(client);
 	}
+
 	return client;
 }
 
@@ -82,7 +84,7 @@ async function listEvents(auth) {
 	const events = res.data.items;
 	if (!events || events.length === 0) {
 		console.log("No upcoming events found.");
-		return;
+		return auth;
 	}
 	console.log("Upcoming 10 events:");
 	events.map((event, i) => {
@@ -95,10 +97,10 @@ async function listEvents(auth) {
 
 async function emsCalendarToGoogleCalendar(auth) {
 	const calendar = google.calendar({ version: "v3", auth });
-	// Get clendar on emsVlute
+	// Get calendar on emsVlute
 	const params = new URLSearchParams();
-	params.append("hocky", 35);
-	params.append("masv", 22004015);
+	params.append("hocky", SEMESTER_ID);
+	params.append("masv", STUDENT_ID);
 
 	let htmlText = await fetch(
 		"https://ems.vlute.edu.vn/vTKBSinhVien/ViewTKBSV",
@@ -144,8 +146,6 @@ async function emsCalendarToGoogleCalendar(auth) {
 			};
 		});
 
-	console.log(courseList);
-
 	// Handle create event from data formatted
 	for (let i = 0; i < courseList.length; i++) {
 		const course = courseList[i];
@@ -153,7 +153,11 @@ async function emsCalendarToGoogleCalendar(auth) {
 		for (let j = 0; j < course.dateList.length; j++) {
 			const date = course.dateList[j];
 			const event = {
-				summary: `${course.room} - ${course.courseName}`,
+				summary: `[${course.room.split("-")[0].trim()}] ${
+					course.courseName
+				}`,
+				description: `Giáo viên: ${course.teacher}`,
+				location: `Phòng ${course.room}`,
 				start: {
 					dateTime: new Date(
 						new Date().getFullYear(),
@@ -174,12 +178,20 @@ async function emsCalendarToGoogleCalendar(auth) {
 					).toISOString(),
 					timeZone: "Asia/Ho_Chi_Minh",
 				},
+				reminders: {
+					useDefault: false,
+					overrides: [
+						// { method: "popup", minutes: 24 * 60 },
+						{ method: "popup", minutes: 60 },
+						// { method: "popup", minutes: 30 },
+					],
+				},
 			};
 
 			calendar.events.insert(
 				{
 					auth: auth,
-					calendarId: "primary",
+					calendarId: CALENDAR_ID,
 					resource: event,
 				},
 				function (err, event) {
@@ -188,13 +200,14 @@ async function emsCalendarToGoogleCalendar(auth) {
 							"There was an error contacting the Calendar service: " +
 								err
 						);
-						return;
-					}
-					console.log("Event created: %s", event.htmlLink);
+					} else
+						console.log(
+							"Event created: " + event.config.data.summary
+						);
 				}
 			);
 
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 700));
 		}
 	}
 }
