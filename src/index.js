@@ -3,20 +3,15 @@ const path = require("path");
 const process = require("process");
 const { authenticate } = require("@google-cloud/local-auth");
 const { google } = require("googleapis");
-const { convert } = require("html-to-text");
+const { STUDENT_ID, SEMESTER_ID, CALENDAR_ID } = require("./config");
+const { getCourseList } = require("./utils/methods");
 
-// If modifying these scopes, delete token.json.
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
-const TOKEN_PATH = path.join(process.cwd(), "token.json");
-const CREDENTIALS_PATH = path.join(process.cwd(), "credentials.json");
-
-const STUDENT_ID = 22004015;
-const SEMESTER_ID = 35;
-const CALENDAR_ID =
-	"772c9d334b8b255d1d09c72f8b421e88eba516ed655d530da6d0f4a311532cb9@group.calendar.google.com";
+const TOKEN_PATH = path.join(process.cwd(), "./assets/json/token.json");
+const CREDENTIALS_PATH = path.join(
+	process.cwd(),
+	"./assets/json/credentials.json"
+);
 
 async function loadSavedCredentialsIfExist() {
 	try {
@@ -28,12 +23,6 @@ async function loadSavedCredentialsIfExist() {
 	}
 }
 
-/**
- * Serializes credentials to a file compatible with GoogleAUth.fromJSON.
- *
- * @param {OAuth2Client} client
- * @return {Promise<void>}
- */
 async function saveCredentials(client) {
 	const content = await fs.readFile(CREDENTIALS_PATH);
 	const keys = JSON.parse(content);
@@ -47,15 +36,11 @@ async function saveCredentials(client) {
 	await fs.writeFile(TOKEN_PATH, payload);
 }
 
-/**
- * Load or request or authorization to call APIs.
- *
- */
 async function authorize() {
 	let client = await loadSavedCredentialsIfExist();
-	if (client) {
-		return client;
-	}
+
+	if (client) return client;
+
 	client = await authenticate({
 		scopes: SCOPES,
 		keyfilePath: CREDENTIALS_PATH,
@@ -68,10 +53,6 @@ async function authorize() {
 	return client;
 }
 
-/**
- * Lists the next 10 events on the user's primary calendar.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
 async function listEvents(auth) {
 	const calendar = google.calendar({ version: "v3", auth });
 	const res = await calendar.events.list({
@@ -102,49 +83,7 @@ async function emsCalendarToGoogleCalendar(auth) {
 	params.append("hocky", SEMESTER_ID);
 	params.append("masv", STUDENT_ID);
 
-	let htmlText = await fetch(
-		"https://ems.vlute.edu.vn/vTKBSinhVien/ViewTKBSV",
-		{
-			method: "post",
-			"Content-Type": "application/x-www-form-urlencoded",
-			body: params,
-		}
-	)
-		.then((res) => res.text())
-		.catch(() => null);
-
-	htmlText = htmlText
-		.split("<!-- /.tab-pane - list -->")
-		.at(1)
-		.split("<!-- /.tab-pane - calendar -->")
-		.at(0)
-		.split("<tbody>")
-		.at(1)
-		.split("</tbody>")
-		.at(0);
-
-	const courseList = htmlText
-		.split("<tr>")
-		.map((v) => v.split("</tr>").at(0))
-		.filter((v) => !!v)
-		.map((str) => {
-			const text = convert(str, {});
-			const courseTextList = text.split("\n");
-
-			return {
-				courseName: courseTextList[1].split("- ")[1].split(" (")[0],
-				teacher: courseTextList[2].split("GV: ")[1],
-				room: courseTextList[3].split("Phòng: ")[1].split(" (")[0],
-				time: courseTextList[3]
-					.split("(")[1]
-					.split(")")[0]
-					.split(", ")[1],
-				dateList: (courseTextList[5] + (courseTextList[6] || ""))
-					.split("Ngày học: ")[1]
-					.split(",")
-					.map((v) => v.trim()),
-			};
-		});
+	const courseList = await getCourseList(params);
 
 	// Handle create event from data formatted
 	for (let i = 0; i < courseList.length; i++) {
@@ -156,8 +95,8 @@ async function emsCalendarToGoogleCalendar(auth) {
 				summary: `[${course.room.split("-")[0].trim()}] ${
 					course.courseName
 				}`,
-				description: `Giáo viên: ${course.teacher}`,
-				location: `Phòng ${course.room}`,
+				description: `Giáo viên: ${course.teacher};\nPhòng: ${course.room};`,
+				location: `Phòng: ${course.room}`,
 				start: {
 					dateTime: new Date(
 						new Date().getFullYear(),
@@ -181,9 +120,9 @@ async function emsCalendarToGoogleCalendar(auth) {
 				reminders: {
 					useDefault: false,
 					overrides: [
-						// { method: "popup", minutes: 24 * 60 },
+						{ method: "popup", minutes: 12 * 60 },
 						{ method: "popup", minutes: 60 },
-						// { method: "popup", minutes: 30 },
+						{ method: "popup", minutes: 5 },
 					],
 				},
 			};
