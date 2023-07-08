@@ -1,13 +1,12 @@
-const fs = require("fs").promises;
-const path = require("path");
-const process = require("process");
-const { authenticate } = require("@google-cloud/local-auth");
-const { google } = require("googleapis");
+import fs from "fs/promises";
+import path from "path";
+import process from "process";
+import { authenticate } from "@google-cloud/local-auth";
+import { google } from "googleapis";
+
 const { STUDENT_ID, SEMESTER_ID, CALENDAR_ID } = require("./config");
 const { getCourseList } = require("./utils/methods");
 
-const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-const TOKEN_PATH = path.join(process.cwd(), "./assets/json/token.json");
 const CREDENTIALS_PATH = path.join(
 	process.cwd(),
 	"./assets/json/credentials.json"
@@ -122,6 +121,8 @@ async function emsCalendarToGoogleCalendar(auth) {
 					overrides: [
 						{ method: "popup", minutes: 12 * 60 },
 						{ method: "popup", minutes: 60 },
+						{ method: "popup", minutes: 30 },
+						{ method: "popup", minutes: 15 },
 						{ method: "popup", minutes: 5 },
 					],
 				},

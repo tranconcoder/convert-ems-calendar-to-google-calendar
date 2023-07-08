@@ -1,17 +1,22 @@
 {
-  "name": "ems-calendar-to-google-calendar",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@google-cloud/local-auth": "^2.1.0",
-    "googleapis": "^105.0.0",
-    "html-to-text": "^9.0.5"
-  }
+	"name": "ems-calendar-to-google-calendar",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "ts-node ./src/index.ts"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@google-cloud/local-auth": "^2.1.0",
+		"googleapis": "^105.0.0",
+		"html-to-text": "^9.0.5"
+	},
+	"devDependencies": {
+		"@types/node": "^20.2.1"
+	}
 }
